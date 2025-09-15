@@ -1,0 +1,131 @@
+EAI測試結果
+
+===========PCTF============
+<root>
+  <InputData>
+    <ORG/>
+    <TYPE/>
+    <CARDHOLDER>4573780000000006</CARDHOLDER>
+    <EMG/>
+    <BLOCK-CDE/>
+    <NEW-ACCT/>
+    <DATE-TRANS-EFFECT/>
+    <UPDATE-EXCEPTION-FILE/>
+  </InputData>
+  <OutputData>
+    <ORG>001  </ORG>
+    <TYPE>370 </TYPE> 利被商務玉璽卡 VISA
+    <CARDHOLDER>4573780000000006</CARDHOLDER>
+    <EMG>         </EMG>
+    <BLOCK-CDE>L</BLOCK-CDE>
+    <NEW-ACCT>4573780000000105</NEW-ACCT>
+    <DATE-TRANS-EFFECT>10092025</DATE-TRANS-EFFECT>
+    <UPDATE-EXCEPTION-FILE>N</UPDATE-EXCEPTION-FILE>
+    <TxRetMsg>維護成功</TxRetMsg>
+  </OutputData>
+</root>
+
+
+<root>
+  <InputData>
+    <ORG/>
+    <TYPE/>
+    <CARDHOLDER>4025128950000127</CARDHOLDER>
+    <EMG/>
+    <BLOCK-CDE/>
+    <NEW-ACCT/>
+    <DATE-TRANS-EFFECT/>
+    <UPDATE-EXCEPTION-FILE/>
+  </InputData>
+  <OutputData>
+    <ORG>001  </ORG>
+    <TYPE>195 </TYPE>  
+    <CARDHOLDER>4025128950000127</CARDHOLDER>
+    <EMG>         </EMG>
+    <BLOCK-CDE>L</BLOCK-CDE>
+    <NEW-ACCT>4025128950000309</NEW-ACCT>
+    <DATE-TRANS-EFFECT>10092025</DATE-TRANS-EFFECT>
+    <UPDATE-EXCEPTION-FILE>N</UPDATE-EXCEPTION-FILE>
+    <TxRetMsg>維護成功</TxRetMsg>
+  </OutputData>
+</root>
+ ONE卡 type: 191 195 291 391 395 397
+
+
+4573780000000014
+<root>
+  <InputData>
+    <ORG/>
+    <TYPE/>
+    <CARDHOLDER>4573780000000014 </CARDHOLDER>
+    <EMG/>
+    <BLOCK-CDE/>
+    <NEW-ACCT/>
+    <DATE-TRANS-EFFECT/>
+    <UPDATE-EXCEPTION-FILE/>
+  </InputData>
+  <OutputData>
+    <ORG>001  </ORG>
+    <TYPE>370 </TYPE>
+    <CARDHOLDER>4573780000000014</CARDHOLDER>
+    <EMG>         </EMG>
+    <BLOCK-CDE>L</BLOCK-CDE>
+    <NEW-ACCT>4573780000000204</NEW-ACCT>
+    <DATE-TRANS-EFFECT>11092025</DATE-TRANS-EFFECT>
+    <UPDATE-EXCEPTION-FILE>N</UPDATE-EXCEPTION-FILE>
+    <TxRetMsg>維護成功</TxRetMsg>
+  </OutputData>
+</root>
+
+
+
+
+=============================PCMH===============================
+
+0006新卡號 4573780000000105  error?
+<root>
+  <OutputData>
+    <ACCT-DATA-1>370</ACCT-DATA-1>
+    <ACCT-DATA-2>4573780000000105  </ACCT-DATA-2>
+    <TxRetMsg>INPUT DATA ERROR</TxRetMsg>
+  </OutputData>
+</root>
+
+
+PCMH xml 4563148170008211 有無改參數都成功
+<OutputData>
+    <ACCT-DATA-1>217</ACCT-DATA-1>
+    <ACCT-DATA-2>4563148170008203  </ACCT-DATA-2>
+    <TxRetMsg>維護成功</TxRetMsg>
+  </OutputData>
+
+0127新卡號 4025128950000309 有無改參數都成功
+<OutputData>
+    <ACCT-DATA-1>195</ACCT-DATA-1>
+    <ACCT-DATA-2>4025128950000309  </ACCT-DATA-2>
+    <TxRetMsg>維護成功</TxRetMsg>
+  </OutputData>
+
+0014新卡號 4573780000000204 
+<OutputData>
+    <ACCT-DATA-1>370</ACCT-DATA-1>
+    <ACCT-DATA-2>4573780000000204  </ACCT-DATA-2>
+    <TxRetMsg>INPUT DATA ERROR</TxRetMsg>
+  </OutputData>
+
+<OutputData> OK了
+    <ACCT-DATA-1>370</ACCT-DATA-1>
+    <ACCT-DATA-2>4573780000000204  </ACCT-DATA-2>
+    <TxRetMsg>維護成功</TxRetMsg>
+  </OutputData>
+
+
+===================TODO=====================
+補卡單上多按鈕 補卡 
+編輯時才可點
+原本輸入新卡號(有指定卡號的)
+點補卡後直接帶入無指定的 純顯示 createtd? 
+
+
+action code 看要不要做控管 只有那八種type可以修改 防止誤敲報錯
+action code & Expired date 都讓user敲
