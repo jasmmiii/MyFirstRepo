@@ -1,0 +1,665 @@
+EAI code
+
+@Service
+public class EaiServiceImpl implements EaiService {
+    private static final Logger logger = LogManager.getLogger(EaiServiceImpl.class);
+
+    @Value("${cfms.eai.service}")
+    private String service;
+
+    @Value("${cfms.eai.network}")
+    private String network;
+
+    @Value("${cfms.eai.daemon}")
+    private String daemon;
+
+    @Value("${cfms.eai.subject}")
+    private String subject;
+
+    @Value("${cfms.eai.timeout}")
+    private double timeout;
+
+    @Value("${cfms.eai.funcode}")
+    private String funcode;
+
+    @Value("${cfms.eai.txcode_suffix}")
+    private String txcode_suffix;
+
+    private Integer MAX_SIZE = 1024 * 1024;
+
+    @Override
+    public Map<String, String> getR6RiskLevel(String customerId) {
+        Map<String, String> input = new HashMap<>();
+        Map<String, String> output = new HashMap<>();
+        Map<String, String> result = new HashMap<>();
+
+//        String txCode = "SSPCTF";
+        String txCode = "SSPCMH";
+        
+//        if (customerId.startsWith("OU")) {
+//            txCode = "SSPTE106OU";
+//        } else {
+//            txCode = "SSPTE106";
+//        }
+
+        if (!txcode_suffix.isBlank()) {
+            txCode += txcode_suffix; // 測試區加上後綴 "_test"
+        }
+
+        input.put("txCode", txCode);
+//        input.put("inputXML", "<?xml version=\"1.0\"?><root><InputData><ORG/>" +
+//                "<TYPE/>" +
+//                "<CARDHOLDER>" + customerId + "</CARDHOLDER>" +
+//                "<EMG/>" +
+//                "<BLOCK-CDE/>" +
+//                "<NEW-ACCT/>" +
+//                "<DATE-TRANS-EFFECT/>" +
+//                "<UPDATE-EXCEPTION-FILE/>" +
+//                "</InputData></root>");
+
+//        input.put("inputXML", "<?xml version=\"1.0\"?><root><InputData><ORG/>\n" +
+//                "<TYPE/>\n" +
+//                "<CARDHOLDER>" + customerId + "</CARDHOLDER>\n" +
+//                "<SHORT-NAME/>\n" +
+//                "<CARDHOLDER-ID/>\n" +
+//                "<CUST-NO-1/>\n" +
+//                "<CUST-NO-2/>\n" +
+//                "<ALT-CUST-NBR-1/>\n" +
+//                "<ALT-CUST-NBR-2/>\n" +
+//                "<CR-LIMIT/>\n" +
+//                "<CLS/>\n" +
+//                "<DTE-ALT-CUST-EXP/>\n" +
+//                "<BILL-CYCLE/>\n" +
+//                "<STMT-FREQ/>\n" +
+//                "<DATE-NEXT-STMT/>\n" +
+//                "<DELIVERY-BR/>\n" +
+//                "<AGENT-BR/>\n" +
+//                "<CH-OVERLIMIT/>\n" +
+//                "<BLOCK-CDE/>\n" +
+//                "<ALT/>\n" +
+//                "<NEG/>\n" +
+//                "<EXP/>\n" +
+//                "<STATUS/>\n" +
+//                "<PAYMENT-TYPE/>\n" +
+//                "<AUTOPAY-AMT/>\n" +
+//                "<DATE-LAST-MAINT/>\n" +
+//                "<PAYMENT-METH/>\n" +
+//                "<ACH-BANK/>\n" +
+//                "<ACCT/>\n" +
+//                "<DELIVERY-FLG/>\n" +
+//                "<COLLATERAL/>\n" +
+//                "<CORP-CUST-1/>\n" +
+//                "<CORP-CUST-2/>\n" +
+//                "<POSTING/>\n" +
+//                "<DUP-STMT-1/>\n" +
+//                "<DUP-STMT-2/>\n" +
+//                "<INS-AMT/>\n" +
+//                "<VEL-ID/>\n" +
+//                "<DD-AMT/>\n" +
+//                "<CSH-LIM/>\n" +
+//                "<OPENED/>\n" +
+//                "<CLOSED/>\n" +
+//                "<WARN-BULLTN/>\n" +
+//                "<MAIL-DATE>" + "03012001" + "</MAIL-DATE>\n" +
+//                "<CARD-FEE/>\n" +
+//                "<BLOCK/>\n" +
+//                "<ALT-BLCK/>\n" +
+//                "<REG-NMBR/>\n" +
+//                "<MULTIPLE/>\n" +
+//                "<DLY-CSH-LIM/>\n" +
+//                "<PHOTO>1</PHOTO>\n" +
+//                "<RENEW/>\n" +
+//                "<USER-CODE-2/>\n" +
+//                "<LOST-APPLICATION/>\n" +
+//                "<EPSS-PIN-RETRIES/>\n" +
+//                "<STATEMENT-FLAG/>\n" +
+//                "<DISPLAY-REQUEST/>\n" +
+//                "<BONUS-BUCKS/>\n" +
+//                "<BUCKS-USED/>\n" +
+//                "<COLL-CARD-REQUEST/>\n" +
+//                "<HI-BALANCE/>\n" +
+//                "<TBL-HBL/>\n" +
+//                "<PRE-PAY/>\n" +
+//                "<CR-EXP-DTE/>\n" +
+//                "<FOREIGN-CR-LMT/>\n" +
+//                "<CR-FACTOR/>\n" +
+//                "<E1/>\n" +
+//                "<ACTN-1/>\n" +
+//                "<PA-1/>\n" +
+//                "<REQ-1/>\n" +
+//                "<TYPE-1/>\n" +
+//                "<OUT-1/>\n" +
+//                "<RET-1/>\n" +
+//                "<RQTYPE-1/>\n" +
+//                "<E2/>\n" +
+//                "<ACTN-2/>\n" +
+//                "<PA-2/>\n" +
+//                "<REQ-2/>\n" +
+//                "<TYPE-2/>\n" +
+//                "<OUT-2/>\n" +
+//                "<RET-2/>\n" +
+//                "<RQTYPE-2/>\n" +
+//                "<ACTN-3/>\n" +
+//                "<PA-3/>\n" +
+//                "<REQ-3/>\n" +
+//                "<TYPE-3/>\n" +
+//                "<OUT-3/>\n" +
+//                "<RET-3/>\n" +
+//                "<RQTYPE-3/>\n" +
+//                "<ACTN-4/>\n" +
+//                "<PA-4/>\n" +
+//                "<REQ-4/>\n" +
+//                "<TYPE-4>" + "00" + "</TYPE-4>\n" +
+//                "<OUT-4>" + "00" + "</OUT-4>\n" +
+//                "<RET-4/>\n" +
+//                "<RQTYPE-4>" + "00" + "</RQTYPE-4>\n" +
+//                "<DDA-ACCT/>\n" +
+//                "<APS-NMBR/>\n" +
+//                "<SAV-ACCT/>\n" +
+//                "<PIN/>\n" +
+//                "<SAV-ACCT-EXP-DATE/>\n" +
+//                "<PROMOTOR-ID/>\n" +
+//                "<DATE-LAST-REQ/>\n" +
+//                "<AFF-GRP/>\n" +
+//                "<OFF-BLK/>\n" +
+//                "<DTE-PIN-MAINT/>\n" +
+//                "<CURRENT/>\n" +
+//                "<REAGE-ERQUEST/>\n" +
+//                "<LST-REAGE/>\n" +
+//                "<PAST-DUE-1/>\n" +
+//                "<PAST-DUE-2/>\n" +
+//                "<DAY-120-1/>\n" +
+//                "<DAY-120-2/>\n" +
+//                "<DAY-30-1/>\n" +
+//                "<DAY-30-2/>\n" +
+//                "<DAY-150-1/>\n" +
+//                "<DAY-150-2/>\n" +
+//                "<DAY-60-1/>\n" +
+//                "<DAY-60-2/>\n" +
+//                "<DAY-180-1/>\n" +
+//                "<DAY-180-2/>\n" +
+//                "<DAY-90-1/>\n" +
+//                "<DAY-90-2/>\n" +
+//                "<DAY-210-1/>\n" +
+//                "<DAY-210-2/>\n" +
+//                "<PROFILE-1/>\n" +
+//                "<PROFILE-2/>\n" +
+//                "<PROFILE-3/>\n" +
+//                "<PROFILE-4/>\n" +
+//                "<PROFILE-5/>\n" +
+//                "<PROFILE-6/>\n" +
+//                "<PROFILE-7/>\n" +
+//                "<PROFILE-8/>\n" +
+//                "<PROFILE-9/>\n" +
+//                "<PROFILE-10/>\n" +
+//                "<PROFILE-11/>\n" +
+//                "<PROFILE-12/>\n" +
+//                "<PROFILE-13/>\n" +
+//                "<PROFILE-14/>\n" +
+//                "<PROFILE-15/>\n" +
+//                "<PROFILE-16/>\n" +
+//                "<PROFILE-17/>\n" +
+//                "<PROFILE-18/>\n" +
+//                "<PROFILE-19/>\n" +
+//                "<PROFILE-20/>\n" +
+//                "<PROFILE-21/>\n" +
+//                "<PROFILE-22/>\n" +
+//                "<PROFILE-23/>\n" +
+//                "<PROFILE-24/>\n" +
+//                "<AFF-ID/>\n" +
+//                "<PERM-COLLECTOR/>\n" +
+//                "<CURR-COLLECTOR/>\n" +
+//                "<DATE-INTO-COL/>\n" +
+//                "<REASON-IN-COLL/>\n" +
+//                "<NBR-RTN-CHECK/>\n" +
+//                "<DATE-LST-RTN/>\n" +
+//                "<PREV-CRD-ACT-DTE/>\n" +
+//                "<CURR-CRD-ACT-DTE/>\n" +
+//                "<NEW-ACCT/>\n" +
+//                "<DATE-TRANS-EFFECT/>\n" +
+//                "<DELQ-SET-APPLY/>\n" +
+//                "<STS/>\n" +
+//                "<REWN/>\n" +
+//                "<RGS/>\n" +
+//                "<WAIVE-FLAG-RSN/>\n" +
+//                "<WAIVE-EXP/>\n" +
+//                "<CA-ACT-DATE/>\n" +
+//                "<RETAIL-INTEREST/>\n" +
+//                "<CASH-INTEREST/>\n" +
+//                "<LATE-CHARGES/>\n" +
+//                "<LATE-NOTICE/>\n" +
+//                "<ANNUAL-FEES/>\n" +
+//                "<OVERLIMIT-CHARGES/>\n" +
+//                "<SERVICE-CHARGES/>\n" +
+//                "<PREPAY/>\n" +
+//                "<JOINING-FEE/>\n" +
+//                "<CTD-WAIVE/>\n" +
+//                "<RTL-BASE-RATE/>\n" +
+//                "<RTL-BASE-ADJ-1/>\n" +
+//                "<RTL-BASE-ADJ-2/>\n" +
+//                "<RTL-BASE-LIMIT/>\n" +
+//                "<RTL-TWO-RATE>" + "1650000" + "</RTL-TWO-RATE>\n" +
+//                "<RTL-TWO-ADJ-1/>\n" +
+//                "<RTL-TWO-ADJ-2>" + "0002000" + "</RTL-TWO-ADJ-2>\n" +
+//                "<RTL-TWO-LIMIT/>\n" +
+//                "<RTL-TRD-RATE/>\n" +
+//                "<RTL-TRD-ADJ-1/>\n" +
+//                "<RTL-TRD-ADJ-2/>\n" +
+//                "<RTL-CHG-FLAG/>\n" +
+//                "<RTL-CURR-INT-PAID/>\n" +
+//                "<RTL-LAST-INT-PAID/>\n" +
+//                "<CASH-BASE-RATE/>\n" +
+//                "<CASH-BASE-ADJ-1/>\n" +
+//                "<CASH-BASE-ADJ-2/>\n" +
+//                "<CASH-BASE-LIMIT/>\n" +
+//                "<CASH-TWO-RATE>" + "1650000" + "</CASH-TWO-RATE>\n" +
+//                "<CASH-TWO-ADJ-1/>\n" +
+//                "<CASH-TWO-ADJ-2>" + "0002000" + "</CASH-TWO-ADJ-2>\n" +
+//                "<CASH-TWO-LIMIT/>\n" +
+//                "<CASH-TRD-RATE/>\n" +
+//                "<CASH-TRD-ADJ-1/>\n" +
+//                "<CASH-TRD-ADJ-2/>\n" +
+//                "<CASH-CHG-FLAG/>\n" +
+//                "<CASH-CURR-INT-PAID/>\n" +
+//                "<CASH-LAST-INT-PAID/>\n" +
+//                "<STATUS-FL/>\n" +
+//                "<RSN-CD/>\n" +
+//                "<DATE-STAT-CHNGE/>\n" +
+//                "<PROD-OFFER-TABLE-OCCUR/>\n" +
+//                "<PROD-OFFER-TABLE-EXP-DATE/>\n" +
+//                "<PROD-OFFER-PENDING-OCCUR/>\n" +
+//                "<PROD-OFFER-PENDING-EXP-DATE/></InputData></root>");
+
+        input.put("inputXML", "<?xml version=\"1.0\"?><root><InputData><ORG/>\n" +
+                "<TYPE/>\n" +
+                "<CARDHOLDER>" + "4573780000000105" + "</CARDHOLDER>\n" +
+                "<SHORT-NAME/>\n" +
+                "<CARDHOLDER-ID/>\n" +
+                "<CUST-NO-1/>\n" +
+                "<CUST-NO-2/>\n" +
+                "<ALT-CUST-NBR-1/>\n" +
+                "<ALT-CUST-NBR-2/>\n" +
+                "<CR-LIMIT/>\n" +
+                "<CLS/>\n" +
+                "<DTE-ALT-CUST-EXP/>\n" +
+                "<BILL-CYCLE/>\n" +
+                "<STMT-FREQ/>\n" +
+                "<DATE-NEXT-STMT/>\n" +
+                "<DELIVERY-BR/>\n" +
+                "<AGENT-BR/>\n" +
+                "<CH-OVERLIMIT/>\n" +
+                "<BLOCK-CDE/>\n" +
+                "<ALT/>\n" +
+                "<NEG/>\n" +
+                "<EXP/>\n" +
+                "<STATUS/>\n" +
+                "<PAYMENT-TYPE/>\n" +
+                "<AUTOPAY-AMT/>\n" +
+                "<DATE-LAST-MAINT/>\n" +
+                "<PAYMENT-METH/>\n" +
+                "<ACH-BANK/>\n" +
+                "<ACCT/>\n" +
+                "<DELIVERY-FLG/>\n" +
+                "<COLLATERAL/>\n" +
+                "<CORP-CUST-1/>\n" +
+                "<CORP-CUST-2/>\n" +
+                "<POSTING/>\n" +
+                "<DUP-STMT-1/>\n" +
+                "<DUP-STMT-2/>\n" +
+                "<INS-AMT/>\n" +
+                "<VEL-ID/>\n" +
+                "<DD-AMT/>\n" +
+                "<CSH-LIM/>\n" +
+                "<OPENED/>\n" +
+                "<CLOSED/>\n" +
+                "<WARN-BULLTN/>\n" +
+                "<MAIL-DATE>" + "03012001" + "</MAIL-DATE>\n" +
+                "<CARD-FEE/>\n" +
+                "<BLOCK/>\n" +
+                "<ALT-BLCK/>\n" +
+                "<REG-NMBR/>\n" +
+                "<MULTIPLE/>\n" +
+                "<DLY-CSH-LIM/>\n" +
+                "<PHOTO>1</PHOTO>\n" +
+                "<RENEW/>\n" +
+                "<USER-CODE-2/>\n" +
+                "<LOST-APPLICATION/>\n" +
+                "<EPSS-PIN-RETRIES/>\n" +
+                "<STATEMENT-FLAG/>\n" +
+                "<DISPLAY-REQUEST/>\n" +
+                "<BONUS-BUCKS/>\n" +
+                "<BUCKS-USED/>\n" +
+                "<COLL-CARD-REQUEST/>\n" +
+                "<HI-BALANCE/>\n" +
+                "<TBL-HBL/>\n" +
+                "<PRE-PAY/>\n" +
+                "<CR-EXP-DTE/>\n" +
+                "<FOREIGN-CR-LMT/>\n" +
+                "<CR-FACTOR/>\n" +
+                "<E1/>\n" +
+                "<ACTN-1/>\n" +
+                "<PA-1/>\n" +
+                "<REQ-1/>\n" +
+                "<TYPE-1/>\n" +
+                "<OUT-1/>\n" +
+                "<RET-1/>\n" +
+                "<RQTYPE-1/>\n" +
+                "<E2/>\n" +
+                "<ACTN-2/>\n" +
+                "<PA-2/>\n" +
+                "<REQ-2/>\n" +
+                "<TYPE-2/>\n" +
+                "<OUT-2/>\n" +
+                "<RET-2/>\n" +
+                "<RQTYPE-2/>\n" +
+                "<ACTN-3/>\n" +
+                "<PA-3/>\n" +
+                "<REQ-3/>\n" +
+                "<TYPE-3/>\n" +
+                "<OUT-3/>\n" +
+                "<RET-3/>\n" +
+                "<RQTYPE-3/>\n" +
+                "<ACTN-4/>\n" +
+                "<PA-4/>\n" +
+                "<REQ-4/>\n" +
+                "<TYPE-4>" + "00" + "</TYPE-4>\n" +
+                "<OUT-4>" + "00" + "</OUT-4>\n" +
+                "<RET-4/>\n" +
+                "<RQTYPE-4>" + "00" + "</RQTYPE-4>\n" +
+                "<DDA-ACCT/>\n" +
+                "<APS-NMBR/>\n" +
+                "<SAV-ACCT/>\n" +
+                "<PIN/>\n" +
+                "<SAV-ACCT-EXP-DATE>" + "0932" + "</SAV-ACCT-EXP-DATE>\n" +
+                "<PROMOTOR-ID/>\n" +
+                "<DATE-LAST-REQ/>\n" +
+                "<AFF-GRP/>\n" +
+                "<OFF-BLK/>\n" +
+                "<DTE-PIN-MAINT/>\n" +
+                "<CURRENT/>\n" +
+                "<REAGE-ERQUEST/>\n" +
+                "<LST-REAGE/>\n" +
+                "<PAST-DUE-1/>\n" +
+                "<PAST-DUE-2/>\n" +
+                "<DAY-120-1/>\n" +
+                "<DAY-120-2/>\n" +
+                "<DAY-30-1/>\n" +
+                "<DAY-30-2/>\n" +
+                "<DAY-150-1/>\n" +
+                "<DAY-150-2/>\n" +
+                "<DAY-60-1/>\n" +
+                "<DAY-60-2/>\n" +
+                "<DAY-180-1/>\n" +
+                "<DAY-180-2/>\n" +
+                "<DAY-90-1/>\n" +
+                "<DAY-90-2/>\n" +
+                "<DAY-210-1/>\n" +
+                "<DAY-210-2/>\n" +
+                "<PROFILE-1/>\n" +
+                "<PROFILE-2/>\n" +
+                "<PROFILE-3/>\n" +
+                "<PROFILE-4/>\n" +
+                "<PROFILE-5/>\n" +
+                "<PROFILE-6/>\n" +
+                "<PROFILE-7/>\n" +
+                "<PROFILE-8/>\n" +
+                "<PROFILE-9/>\n" +
+                "<PROFILE-10/>\n" +
+                "<PROFILE-11/>\n" +
+                "<PROFILE-12/>\n" +
+                "<PROFILE-13/>\n" +
+                "<PROFILE-14/>\n" +
+                "<PROFILE-15/>\n" +
+                "<PROFILE-16/>\n" +
+                "<PROFILE-17/>\n" +
+                "<PROFILE-18/>\n" +
+                "<PROFILE-19/>\n" +
+                "<PROFILE-20/>\n" +
+                "<PROFILE-21/>\n" +
+                "<PROFILE-22/>\n" +
+                "<PROFILE-23/>\n" +
+                "<PROFILE-24/>\n" +
+                "<AFF-ID/>\n" +
+                "<PERM-COLLECTOR/>\n" +
+                "<CURR-COLLECTOR/>\n" +
+                "<DATE-INTO-COL/>\n" +
+                "<REASON-IN-COLL/>\n" +
+                "<NBR-RTN-CHECK/>\n" +
+                "<DATE-LST-RTN/>\n" +
+                "<PREV-CRD-ACT-DTE/>\n" +
+                "<CURR-CRD-ACT-DTE/>\n" +
+                "<NEW-ACCT/>\n" +
+                "<DATE-TRANS-EFFECT/>\n" +
+                "<DELQ-SET-APPLY/>\n" +
+                "<STS/>\n" +
+                "<REWN/>\n" +
+                "<RGS/>\n" +
+                "<WAIVE-FLAG-RSN/>\n" +
+                "<WAIVE-EXP/>\n" +
+                "<CA-ACT-DATE/>\n" +
+                "<RETAIL-INTEREST/>\n" +
+                "<CASH-INTEREST/>\n" +
+                "<LATE-CHARGES/>\n" +
+                "<LATE-NOTICE/>\n" +
+                "<ANNUAL-FEES/>\n" +
+                "<OVERLIMIT-CHARGES/>\n" +
+                "<SERVICE-CHARGES/>\n" +
+                "<PREPAY/>\n" +
+                "<JOINING-FEE/>\n" +
+                "<CTD-WAIVE/>\n" +
+                "<RTL-BASE-RATE/>\n" +
+                "<RTL-BASE-ADJ-1/>\n" +
+                "<RTL-BASE-ADJ-2/>\n" +
+                "<RTL-BASE-LIMIT/>\n" +
+                "<RTL-TWO-RATE>" + "1650000" + "</RTL-TWO-RATE>\n" +
+                "<RTL-TWO-ADJ-1/>\n" +
+                "<RTL-TWO-ADJ-2>" + "0002000" + "</RTL-TWO-ADJ-2>\n" +
+                "<RTL-TWO-LIMIT/>\n" +
+                "<RTL-TRD-RATE/>\n" +
+                "<RTL-TRD-ADJ-1/>\n" +
+                "<RTL-TRD-ADJ-2/>\n" +
+                "<RTL-CHG-FLAG/>\n" +
+                "<RTL-CURR-INT-PAID/>\n" +
+                "<RTL-LAST-INT-PAID/>\n" +
+                "<CASH-BASE-RATE/>\n" +
+                "<CASH-BASE-ADJ-1/>\n" +
+                "<CASH-BASE-ADJ-2/>\n" +
+                "<CASH-BASE-LIMIT/>\n" +
+                "<CASH-TWO-RATE>" + "1650000" + "</CASH-TWO-RATE>\n" +
+                "<CASH-TWO-ADJ-1/>\n" +
+                "<CASH-TWO-ADJ-2>" + "0002000" + "</CASH-TWO-ADJ-2>\n" +
+                "<CASH-TWO-LIMIT/>\n" +
+                "<CASH-TRD-RATE/>\n" +
+                "<CASH-TRD-ADJ-1/>\n" +
+                "<CASH-TRD-ADJ-2/>\n" +
+                "<CASH-CHG-FLAG/>\n" +
+                "<CASH-CURR-INT-PAID/>\n" +
+                "<CASH-LAST-INT-PAID/>\n" +
+                "<STATUS-FL/>\n" +
+                "<RSN-CD/>\n" +
+                "<DATE-STAT-CHNGE/>\n" +
+                "<PROD-OFFER-TABLE-OCCUR/>\n" +
+                "<PROD-OFFER-TABLE-EXP-DATE/>\n" +
+                "<PROD-OFFER-PENDING-OCCUR/>\n" +
+                "<PROD-OFFER-PENDING-EXP-DATE/></InputData></root>");
+
+
+
+        output = this.sendRequest(input); // 送出 EAI request
+
+//        result.put("NEW-ACCT", null);
+
+//        if (output.get("errMsg") == null) {
+//
+//            DocumentBuilderFactory factory = this.buildDocFactory();
+//
+//            try {
+//
+//                // for checkmarx: Unrestricted_File_Upload
+//                String outputXML = output.get("outputXML");
+//                if (outputXML.length() < MAX_SIZE) {
+//                    DocumentBuilder builder = factory.newDocumentBuilder();
+//                    Document document = builder.parse(new InputSource(new StringReader(outputXML)));
+//                    Element rootElement = document.getDocumentElement();
+//
+//                    String rnCode = getString("RN-CODE", rootElement);
+//                    if ("0000".equals(rnCode.substring(0, 4))) {
+//                        String R6RiskLevel = R6RiskLevelConstant.R6_RISK_LEVEL_MAP.get(getString("RISK-ENDURE", rootElement));
+//                        String R6RatingDate = DateTimeUtil.convertROCDateToGregorian(getString("RISK-DATE", rootElement));
+//
+//                        logger.info("R6RiskLevel: {}", CheckUtils.logSanitize(R6RiskLevel));
+//                        logger.info("R6RatingDate: {}", CheckUtils.logSanitize(R6RatingDate));
+//
+//                        // 財管屬性在3個月內才接受
+//                        if (DateTimeUtil.compareDates(R6RatingDate, DateTimeUtil.calculateDateByMonths(DateTimeUtil.getCurrentDate("yyyy-MM-dd"), -3)) > 0) {
+//                            result.put("R6RiskLevel", R6RiskLevel);
+//                            result.put("R6RatingDate", R6RatingDate);
+//                        }
+//                    }
+//                } else {
+//                    throw new KycrrException(ErrorMessageUtil.createErrorMessages(ErrorMessageEnum.E0014, "outputXML reach MAX_SIZE"));
+//                }
+//
+//            } catch (ParserConfigurationException e) {
+//                throw new RuntimeException(e);
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            } catch (SAXException e) {
+//                throw new RuntimeException(e);
+//            }
+//        } else {
+//            throw new KycrrException(ErrorMessageUtil.createErrorMessages(ErrorMessageEnum.E0014, output.get("errMsg").toString()));
+//        }
+//        logger.info("result: {}", CheckUtils.logSanitize(result.toString()));
+
+        return output;
+    }
+
+
+
+	private Map<String, String> sendRequest(Map<String, String> req) {
+        Map<String, String> result = new HashMap<>();
+        String txCode = "";
+        String inputXML = "";
+
+        if (req.isEmpty()) {
+            result.put("errMsg", "Error Reading Request");
+        } else {
+            if (req.get("txCode") == null) {
+                result.put("errMsg", "Error Reading txCode");
+            } else {
+                txCode = req.get("txCode");
+            }
+
+            if (req.get("inputXML") == null) {
+                result.put("errMsg", "Error Reading inputXML");
+            } else {
+                inputXML = req.get("inputXML");
+            }
+        }
+
+        if (!result.isEmpty()) {
+            return result;
+        }
+
+        Calendar rightNow = Calendar.getInstance();
+        Calendar rightNow1;
+        ActionLogger.logInfo("00000", "sendRequest", "Begin to invoke");
+
+        /* Step(1) open Tibrv in native implementation */
+        try {
+            ActionLogger.logInfo("00000", "sendRequest", "Step(1) open Tibrv in native implementation");
+            Tibrv.open(Tibrv.IMPL_NATIVE);
+
+            // Tibrv.open(Tibrv.IMPL_JAVA);
+        } catch (TibrvException e) {
+            ActionLogger.logError("sendRequest", String.format("Failed to open Tibrv in native implementation: %s", e.getMessage()));
+            result.put("errMsg", "Failed to open Tibrv in native implementation");
+            return result;
+        }
+
+        /* Step(2) Set TibrvMsg use UTF-8 encoding */
+        try {
+            ActionLogger.logInfo("00000", "sendRequest", "Step(2) Set TibrvMsg use UTF-8 encoding");
+            TibrvMsg.setStringEncoding("UTF8");
+        } catch (UnsupportedEncodingException uee) {
+            ActionLogger.logError("sendRequest", String.format("Tibrv EncodingException: %s", uee.getMessage()));
+            result.put("errMsg", "Failed to set string encoding");
+            return result;
+        }
+
+        /*
+         * Step(3) Create RVD transport Set connect to RVD by service,network,daemon parameters
+         */
+        TibrvTransport transport = null;
+        try {
+            ActionLogger.logInfo("00000", "sendRequest", "Step(3) Create RVD transport");
+            transport = new TibrvRvdTransport("", "", "tcp:10.10.2.222:7500");
+            transport.setDescription("cfms");
+        } catch (TibrvException e) {
+            ActionLogger.logError("sendRequest", String.format("TibrvException: %s", e.getMessage()));
+            result.put("errMsg", "Fail Create RVD transport");
+            return result;
+        }
+
+        /* Step(4) Create a RV message for packing data to be send */
+        ActionLogger.logInfo("00000", "sendRequest", "Step(4) Create a RV message");
+        TibrvMsg msg = new TibrvMsg();
+
+        /* Step(5) Set send subject into the message */
+        try {
+            ActionLogger.logInfo("00000", "sendRequest", "Step(5) Set send subject into the message");
+            msg.setSendSubject("scsb.eai.request");
+
+            /* Step(6) Set RV Receiver input Parameters */
+            ActionLogger.logInfo("00000", "sendRequest", "Step(6) Set RV Receiver input Parameters");
+            msg.add("StrTxCode", txCode);
+            msg.add("StrFunCode", "cfms");
+            msg.add("StrInputXML", inputXML);
+
+            ActionLogger.logInfo("00000", "sendRequest", String.format("Publishing subject: %s", "scsb.eai.request"));
+            ActionLogger.logInfo("00000", "sendRequest", String.format("Publishing msg: %s", msg));
+
+            TibrvMsg replyMsg = null;
+            /* Step(7) Send Request to BW throw remote RVD */
+            ActionLogger.logInfo("00000", "sendRequest", "Step(7) Send Request to BW throw remote RVD");
+            replyMsg = transport.sendRequest(msg, // message
+                    20.0); // time-out
+            rightNow1 = Calendar.getInstance();
+
+            if (replyMsg == null) {
+                ActionLogger.logInfo("00000", "sendRequest", "request time-out");
+//                logger.info("End of invoke: {}", CheckUtils.logSanitize(rightNow1.getTime().toString()));
+                result.put("errMsg", "request time-out");
+            } else {
+                /* Step(8) processing reply message */
+                ActionLogger.logInfo("00000", "sendRequest", "Step(8) processing reply message");
+                // User Modifies Here
+                ActionLogger.logInfo("00000", "sendRequest", "receive reply msg:");
+//                logger.info("(1) StrOutputXML 結果: {}", Base64.getEncoder().encodeToString(CheckUtils.logSanitize(replyMsg.getField("StrOutputXML").data.toString()).getBytes()));
+//                logger.info("(2) StrReturnMsg 結果: {}", CheckUtils.logSanitize(replyMsg.getField("StrReturnMsg").data.toString()));
+
+                result.put("outputXML", replyMsg.getField("StrOutputXML").data.toString());
+                result.put("returnMsg", replyMsg.getField("StrReturnMsg").data.toString());
+
+                ActionLogger.logInfo("00000", "sendRequest", "End of invoke");
+            }
+        } catch (TibrvException e) {
+            ActionLogger.logError("sendRequest", String.format("Error sending a message: %s", e.getMessage()));
+            result.put("errMsg", "Error sending a message");
+            return result;
+        }
+
+        // Step(9) Close Tibrv, it will cleanup all underlying memory, destroy transport and guarantee delivery.
+        try {
+            ActionLogger.logInfo("00000", "sendRequest", "Step(9) Close Tibrv.");
+            transport.destroy();
+            Tibrv.close();
+        } catch (TibrvException e) {
+            ActionLogger.logError("sendRequest", String.format("Exception close tibrv: %s", e.getMessage()));
+            result.put("errMsg", "Exception close tibrv");
+            return result;
+        }
+
+        return result;
+    }
