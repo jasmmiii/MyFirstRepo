@@ -129,3 +129,111 @@ PCMH xml 4563148170008211 有無改參數都成功
 
 action code 看要不要做控管 只有那八種type可以修改 防止誤敲報錯
 action code & Expired date 都讓user敲
+
+
+===================解析xml=====================
+
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.Optional;
+
+public class XmlCardParser {
+
+    /**
+     * 解析 EAI 回傳的 XML 字串，並提取指定標籤（例如 NEW-ACCT）的值。
+     *
+     * @param xmlString EAI 回傳的完整 XML 字串。
+     * @param tagName 要提取值的標籤名稱，例如 "NEW-ACCT"。
+     * @return 提取到的標籤值（新卡號），如果找不到或解析失敗則返回空 Optional。
+     */
+    public static Optional<String> extractValueFromXml(String xmlString, String tagName) {
+        if (xmlString == null || xmlString.isBlank()) {
+            return Optional.empty();
+        }
+
+        try {
+            // 1. 設置 DocumentBuilderFactory
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            // 為了安全性，建議關閉外部實體解析
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            
+            // 2. 解析 XML 字串
+            // 使用 StringReader 將字串轉換為 InputSource
+            Document document = builder.parse(new InputSource(new StringReader(xmlString)));
+            
+            // 3. 取得根元素
+            Element rootElement = document.getDocumentElement();
+            
+            // 4. 尋找指定的標籤
+            // 這裡我們尋找在 <OutputData> 下的 <NEW-ACCT>，但直接找標籤名通常更快且有效
+            NodeList nodeList = rootElement.getElementsByTagName(tagName);
+            
+            if (nodeList.getLength() > 0) {
+                // 取得第一個符合的節點，並取出其內容，然後移除前後空白（Trim）
+                String value = nodeList.item(0).getTextContent().trim();
+                return Optional.of(value);
+            }
+
+        } catch (ParserConfigurationException | IOException | SAXException e) {
+            // 紀錄解析錯誤
+            System.err.println("XML 解析錯誤: " + e.getMessage());
+            // 實務上應使用 Logger
+        }
+        
+        return Optional.empty(); // 解析失敗或找不到標籤則返回空
+    }
+
+    // 測試範例
+    public static void main(String[] args) {
+        String pctfXmlOutput = "<root>\n" +
+                "  <InputData>\n" +
+                "    <ORG/>\n" +
+                "    <TYPE/>\n" +
+                "    <CARDHOLDER>4573780000000006</CARDHOLDER>\n" +
+                "    <EMG/>\n" +
+                "    <BLOCK-CDE/>\n" +
+                "    <NEW-ACCT/>\n" +
+                "    <DATE-TRANS-EFFECT/>\n" +
+                "    <UPDATE-EXCEPTION-FILE/>\n" +
+                "  </InputData>\n" +
+                "  <OutputData>\n" +
+                "    <ORG>001  </ORG>\n" +
+                "    <TYPE>370 </TYPE>\n" +
+                "    <CARDHOLDER>4573780000000006</CARDHOLDER>\n" +
+                "    <EMG>         </EMG>\n" +
+                "    <BLOCK-CDE>L</BLOCK-CDE>\n" +
+                "    <NEW-ACCT>4573780000000105</NEW-ACCT>\n" +
+                "    <DATE-TRANS-EFFECT>10092025</DATE-TRANS-EFFECT>\n" +
+                "    <UPDATE-EXCEPTION-FILE>N</UPDATE-EXCEPTION-FILE>\n" +
+                "    <TxRetMsg>維護成功</TxRetMsg>\n" +
+                "  </OutputData>\n" +
+                "</root>";
+
+        Optional<String> newCardNumber = extractValueFromXml(pctfXmlOutput, "NEW-ACCT");
+        
+        if (newCardNumber.isPresent()) {
+            System.out.println("提取到的新卡號: " + newCardNumber.get()); // 輸出: 4573780000000105
+        } else {
+            System.out.println("無法提取新卡號。");
+        }
+    }
+}
+
+
+
+
+
+
+
