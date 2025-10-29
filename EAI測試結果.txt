@@ -134,66 +134,93 @@ action code & Expired date 都讓user敲
 ===================解析xml=====================
 
 
+package com.scsb.cfms.util;
+
+import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.Optional;
 
+@Component
 public class XmlCardParser {
 
+    // 建議使用 Logger 而非 System.err
+    // private static final Logger logger = LogManager.getLogger(XmlCardParser.class); 
+
     /**
-     * 解析 EAI 回傳的 XML 字串，並提取指定標籤（例如 NEW-ACCT）的值。
+     * 安全地解析 EAI 回傳的 XML 字串，並使用 XPath 提取指定標籤的值。
      *
      * @param xmlString EAI 回傳的完整 XML 字串。
-     * @param tagName 要提取值的標籤名稱，例如 "NEW-ACCT"。
-     * @return 提取到的標籤值（新卡號），如果找不到或解析失敗則返回空 Optional。
+     * @param tagName 要提取值的標籤名稱，例如 "NEW-ACCT" 或 "TxRetMsg"。
+     * @return 提取到的標籤值，如果找不到或解析失敗則返回空 Optional。
      */
-    public static Optional<String> extractValueFromXml(String xmlString, String tagName) {
-        if (xmlString == null || xmlString.isBlank()) {
+    public Optional<String> extractValueFromXml(String xmlString, String tagName) {
+        if (xmlString == null || xmlString.isBlank() || tagName == null || tagName.isBlank()) {
             return Optional.empty();
         }
 
         try {
-            // 1. 設置 DocumentBuilderFactory
+            // =====================================
+            // 1. 安全初始化 XML 解析器 (XXE 防禦)
+            // =====================================
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            // 為了安全性，建議關閉外部實體解析
+
+            // *** 關鍵的安全設定：禁用外部實體解析 ***
             factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+            factory.setExpandEntityReferences(false);
+            // **********************************
+
             DocumentBuilder builder = factory.newDocumentBuilder();
             
             // 2. 解析 XML 字串
-            // 使用 StringReader 將字串轉換為 InputSource
             Document document = builder.parse(new InputSource(new StringReader(xmlString)));
             
-            // 3. 取得根元素
-            Element rootElement = document.getDocumentElement();
+            // =====================================
+            // 3. 使用 XPath 進行精確查詢
+            // =====================================
+            XPath xpath = XPathFactory.newInstance().newXPath();
+
+            // XPath 表達式：//OutputData/tagName
+            // 意義：在 XML 文件中的任何位置，找到 <OutputData> 標籤下的 <tagName> 標籤。
+            // 這樣可以避免 <InputData> 中同名標籤的干擾。
+            String expression = "//OutputData/" + tagName;
             
-            // 4. 尋找指定的標籤
-            // 這裡我們尋找在 <OutputData> 下的 <NEW-ACCT>，但直接找標籤名通常更快且有效
-            NodeList nodeList = rootElement.getElementsByTagName(tagName);
-            
-            if (nodeList.getLength() > 0) {
-                // 取得第一個符合的節點，並取出其內容，然後移除前後空白（Trim）
-                String value = nodeList.item(0).getTextContent().trim();
+            // 執行 XPath 查詢，並期望返回一個單一節點 (Node)
+            Node node = (Node) xpath.evaluate(expression, document, XPathConstants.NODE);
+
+            if (node != null) {
+                // 取得節點內容，並移除前後空白
+                String value = node.getTextContent().trim();
                 return Optional.of(value);
             }
 
-        } catch (ParserConfigurationException | IOException | SAXException e) {
-            // 紀錄解析錯誤
-            System.err.println("XML 解析錯誤: " + e.getMessage());
-            // 實務上應使用 Logger
+        } catch (Exception e) {
+            // 實務上應該使用 logger.error(...)
+            System.err.println("XML 解析錯誤，標籤: " + tagName + ", 錯誤訊息: " + e.getMessage());
         }
         
-        return Optional.empty(); // 解析失敗或找不到標籤則返回空
+        return Optional.empty(); // XPath 查詢失敗或節點為空則返回空
     }
+
+    // ... (Main 測試方法可以保留或刪除) ...
+}
+
+
+
+
 
     // 測試範例
     public static void main(String[] args) {
