@@ -260,7 +260,164 @@ public class XmlCardParser {
 
 
 
+===================測試code=====================
 
 
+import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Map;
+import java.util.Optional;
+
+// 引入您的 Entity 和 Repository
+import com.scsb.cfms.entity.ReissueCard;
+import com.scsb.cfms.entity.FraudCase;
+import com.scsb.cfms.dao.ReissueCardRepository;
+import com.scsb.cfms.dao.FraudCaseRepository;
+import com.scsb.cfms.util.XmlCardParser;
+
+@ExtendWith(MockitoExtension.class) // 啟用 Mockito
+public class EaiServiceImplTest {
+
+    // 1. 定義測試資料
+    private static final String OLD_CARD = "4025128950000127";
+    private static final String NEW_CARD = "4025128950000309";
+    private static final String REISSUE_NO = "R001"; // 假的補卡單號
+    private static final String CASE_NO = "C001";   // 假的主單號
+
+    // 您提供的範例 XML (PCTF)
+    private static final String PCTF_OUTPUT_XML = "<root><OutputData>"
+            + "<NEW-ACCT>" + NEW_CARD + "</NEW-ACCT>"
+            + "</OutputData></root>";
+
+    // 您提供的範例 XML (PCMH)
+    private static final String PCMH_OUTPUT_XML = "<OutputData>"
+            + "<ACCT-DATA-2>" + NEW_CARD + "</ACCT-DATA-2>"
+            + "<TxRetMsg>維護成功</TxRetMsg>"
+            + "</OutputData>";
+
+    // 2. 模擬外部依賴
+    @Mock
+    private ReissueCardRepository reissueCardRepo;
+    @Mock
+    private FraudCaseRepository fraudCaseRepo;
+    @Mock
+    private XmlCardParser xmlCardParser;
+
+    // 3. 監視並注入我們要測試的 Service
+    @Spy // 使用 Spy 來監視真實物件
+    @InjectMocks // 將上面的 @Mock 元件注入到 eaiService 中
+    private EaiServiceImpl eaiService;
+
+    // =================================================================
+    // 測試情境一：首次補卡 (資料庫為空，PCTF 必須執行)
+    // =================================================================
+    @Test
+    void testProcessCardReplacement_FirstTimeRun_ShouldCallPctfAndSave() {
+        // --- 1. GIVEN (安排/設定) ---
+
+        // a. 準備資料庫回傳的資料
+        ReissueCard emptyReissue = new ReissueCard();
+        emptyReissue.setReissueNo(REISSUE_NO);
+        emptyReissue.setCaseNo(CASE_NO);
+        emptyReissue.setReissueCardNo(null); // **關鍵：補發卡號是空的**
+
+        FraudCase fraudCase = new FraudCase();
+        fraudCase.setCaseNo(CASE_NO);
+        fraudCase.setCardNo(OLD_CARD);
+
+        // b. 模擬 Repository 行為
+        when(reissueCardRepo.findById(REISSUE_NO)).thenReturn(Optional.of(emptyReissue));
+        when(fraudCaseRepo.findById(CASE_NO)).thenReturn(Optional.of(fraudCase));
+
+        // c. 模擬 EAI 呼叫 (使用 doReturn().when(spy)... 來模擬 spy 的方法)
+        // 模擬 sendPctfRequest，讓它回傳假的 XML
+        doReturn(Map.of("outputXML", PCTF_OUTPUT_XML))
+            .when(eaiService).sendPctfRequest(OLD_CARD);
+        
+        // 模擬 sendPcmhRequest
+        doReturn(Map.of("outputXML", PCMH_OUTPUT_XML))
+            .when(eaiService).sendPcmhRequest(NEW_CARD);
+
+        // d. 模擬 XML 解析
+        when(xmlCardParser.extractValueFromXml(PCTF_OUTPUT_XML, "NEW-ACCT"))
+            .thenReturn(Optional.of(NEW_CARD));
+        
+        // --- 2. WHEN (執行) ---
+        Map<String, String> result = eaiService.processCardReplacement(REISSUE_NO);
+
+        // --- 3. THEN (驗證) ---
+
+        // a. 驗證 PCTF 有被呼叫 1 次
+        verify(eaiService, times(1)).sendPctfRequest(OLD_CARD);
+
+        // b. 驗證新卡號有被存到資料庫
+        // 抓取 save() 方法的參數
+        ArgumentCaptor<ReissueCard> cardCaptor = ArgumentCaptor.forClass(ReissueCard.class);
+        verify(reissueCardRepo, times(1)).save(cardCaptor.capture());
+        
+        // 檢查被儲存的物件，補發卡號是否已填上
+        assertEquals(NEW_CARD, cardCaptor.getValue().getReissueCardNo());
+
+        // c. 驗證 PCMH 也有被呼叫 1 次
+        verify(eaiService, times(1)).sendPcmhRequest(NEW_CARD);
+
+        // d. 驗證最終結果
+        assertEquals("SUCCESS", result.get("status"));
+        assertEquals(NEW_CARD, result.get("newCardNumber"));
+    }
+
+    // =================================================================
+    // 測試情境二：重複執行 (資料庫已有卡號，PCTF 必須跳過)
+    // =================================================================
+    @Test
+    void testProcessCardReplacement_SecondTimeRun_ShouldSkipPctf() {
+        // --- 1. GIVEN (安排/設定) ---
+
+        // a. 準備資料庫回傳的資料
+        ReissueCard existingReissue = new ReissueCard();
+        existingReissue.setReissueNo(REISSUE_NO);
+        existingReissue.setCaseNo(CASE_NO);
+        existingReissue.setReissueCardNo(NEW_CARD); // **關鍵：補發卡號已存在**
+
+        FraudCase fraudCase = new FraudCase();
+        fraudCase.setCaseNo(CASE_NO);
+        fraudCase.setCardNo(OLD_CARD);
+
+        // b. 模擬 Repository 行為
+        when(reissueCardRepo.findById(REISSUE_NO)).thenReturn(Optional.of(existingReissue));
+        when(fraudCaseRepo.findById(CASE_NO)).thenReturn(Optional.of(fraudCase));
+
+        // c. 模擬 EAI 呼叫 (PCMH 仍然會被呼叫)
+        doReturn(Map.of("outputXML", PCMH_OUTPUT_XML))
+            .when(eaiService).sendPcmhRequest(NEW_CARD);
+        
+        // --- 2. WHEN (執行) ---
+        Map<String, String> result = eaiService.processCardReplacement(REISSUE_NO);
+
+        // --- 3. THEN (驗證) ---
+
+        // a. 驗證 PCTF *絕對沒有* 被呼叫
+        verify(eaiService, never()).sendPctfRequest(anyString());
+
+        // b. 驗證資料庫 *絕對沒有* 再次儲存 (因為沒有更新)
+        verify(reissueCardRepo, never()).save(any(ReissueCard.class));
+
+        // c. 驗證 PCMH 仍然被呼叫 1 次
+        verify(eaiService, times(1)).sendPcmhRequest(NEW_CARD);
+        
+        // d. 驗證最終結果 (仍然成功)
+        assertEquals("SUCCESS", result.get("status"));
+        assertEquals(NEW_CARD, result.get("newCardNumber"));
+    }
+}
 
