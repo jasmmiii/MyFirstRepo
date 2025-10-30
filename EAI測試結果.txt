@@ -421,3 +421,21 @@ public class EaiServiceImplTest {
     }
 }
 
+
+===測試結果===
+
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+
+java.lang.NullPointerException: Cannot invoke "com.scsb.cfms.dao.mssql.cfms.repository.ReissueCardRepository.findByReissueNo(String)" because "<local4>.reissueCardRepository" is null
+
+	at com.scsb.cfms.service.impl.EaiServiceImpl.processCardReissue(EaiServiceImpl.java:71)
+	at com.scsb.cfms.service.impl.EaiServiceImpl.processCardReissue(EaiServiceImpl.java:70)
+	at com.scsb.cfms.service.impl.ReissueCardTest.testProcessCardReissue_FirstTimeRun_ShouldCallPctfAndSave(ReissueCardTest.java:117)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
+
+Process finished with exit code -1
+
+
