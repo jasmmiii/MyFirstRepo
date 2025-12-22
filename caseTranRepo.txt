@@ -1,0 +1,277 @@
+/** VISA_01： Fraud Recoveries - Domestic - Cash Disbursements - Amount */
+    @Query("SELECT COALESCE(SUM(COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)), 0) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE t.countryCode = 'TW' " +
+            "AND t.mccCode IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0) >= 0) " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long sumDomesticCashAmount(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_02： Fraud Recoveries - Domestic - Payments - Amount */
+    @Query("SELECT COALESCE(SUM(COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)), 0) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE t.countryCode = 'TW' " +
+            "AND t.mccCode NOT IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0) >= 0) " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long sumDomesticPaymentsAmount(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_03： Fraud Recoveries - International - Cash Disbursements - Amount */
+    @Query("SELECT COALESCE(SUM(COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)), 0) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE (t.countryCode <> 'TW' OR t.countryCode IS NULL) " +
+            "AND t.mccCode IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0) >= 0) " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long sumInternationalCashAmount(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_04： Fraud Recoveries - International - Payments - Amount */
+    @Query("SELECT COALESCE(SUM(COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)), 0) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE (t.countryCode <> 'TW' OR t.countryCode IS NULL) " +
+            "AND t.mccCode NOT IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0) >= 0) " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long sumInternationalPaymentsAmount(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_05： Gross Fraud Losses - Number of Accounts ; 同 MASTER Gross Fraud Losses - Accounts */
+    @Query("SELECT COUNT(DISTINCT f.cardNo) FROM CB c " +
+            "WHERE c.createTime BETWEEN :startDate AND :endDate" +
+            " AND c.cardBin IN :cardBins " +
+            "AND c.workType = '扣款'"
+    )
+    long countDistinctCardNoByDateRange(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_06： Gross Fraud Losses - Number of Recovered Accounts */
+    @Query(value = """
+    SELECT COUNT(DISTINCT case_no) FROM (
+        SELECT SUBSTRING(cbd.cb_no, 1, 13) AS case_no
+        FROM CHARGEBACK_DETAIL cbd
+        JOIN CHARGEBACK c ON SUBSTRING(cbd.cb_no, 1, 13) = c.case_no
+        LEFT JOIN FRAUD_CASE f ON SUBSTRING(cbd.cb_no, 1, 13) = f.CASE_NO
+        WHERE cbd.cb_result = 1
+          AND cbd.create_time BETWEEN :startDate AND :endDate
+          AND c.work_type = N'扣款'
+          AND LEFT(c.cardBin) IN (:cardBins)
+
+        UNION ALL
+
+        SELECT ct.case_no
+        FROM CASE_TRAN ct
+        JOIN FRAUD_CASE f ON ct.CASE_NO = f.CASE_NO
+        WHERE (ct.tran_code = '41' OR ct.tran_code = '43')
+          AND ct.tran_date BETWEEN :startDate AND :endDate
+          AND LEFT(c.cardBin) IN (:cardBins)
+    ) AS combined
+    """, nativeQuery = true)
+    long countRecoveredAccounts(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_07： Gross Fraud Losses - Domestic- Cash Disbursements - Count */
+    @Query("SELECT COUNT(t.fraudTranNo) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE t.countryCode = 'TW' " +
+            "AND t.mccCode IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long countDomesticCashCountTransactions(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_08： Gross Fraud Losses - Domestic- Cash Disbursements - Volume */
+    @Query("SELECT COALESCE(SUM(t.tranAmt), 0) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE t.countryCode = 'TW' " +
+            "AND t.mccCode IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long sumDomesticCashVolume(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_09: Gross Fraud Losses - Domestic - Payments - Count */
+    @Query("SELECT COUNT(t.fraudTranNo) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE t.countryCode = 'TW' " +
+            "AND t.mccCode NOT IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long countDomesticPaymentsCountTransactions(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_10: Gross Fraud Losses - Domestic - Payments - Volume */
+    @Query("SELECT COALESCE(SUM(t.tranAmt), 0) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE t.countryCode = 'TW' " +
+            "AND t.mccCode NOT IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long sumDomesticPaymentsVolume(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_11： Gross Fraud Losses - International- Cash Disbursements - Count */
+    @Query("SELECT COUNT(t.fraudTranNo) " +
+            "FROM CaseTran t JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE (t.countryCode <> 'TW' OR t.countryCode IS NULL) " +
+            "AND t.mccCode IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long countInternationalCashCountTransactions(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_12： Gross Fraud Losses - International- Cash Disbursements - Volume */
+    @Query("SELECT COALESCE(SUM(t.tranAmt), 0) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE (t.countryCode <> 'TW' OR t.countryCode IS NULL) " +
+            "AND t.mccCode IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long sumInternationalCashVolume(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_13: Gross Fraud Losses - International - Payments - Count */
+    @Query("SELECT COUNT(t.fraudTranNo) " +
+            "FROM CaseTran t JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE (t.countryCode <> 'TW' OR t.countryCode IS NULL) " +
+            "AND t.mccCode NOT IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long countInternationalPaymentsCountTransactions(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** VISA_14: Gross Fraud Losses - International - Payments - Volume */
+    @Query("SELECT COALESCE(SUM(t.tranAmt), 0) " +
+            "FROM CaseTran t " +
+            "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+            "WHERE (t.countryCode <> 'TW' OR t.countryCode IS NULL) " +
+            "AND t.mccCode NOT IN ('6011', '6010') " +
+            "AND cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND cbd.workType = '扣款'"
+    )
+    long sumInternationalPaymentsVolume(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** MASTER Gross Fraud Losses - Balances */
+    @Query("SELECT COALESCE(SUM(cbd.tranAmt), 0) " +
+            "FROM CB c " +
+            "JOIN CBDetail cbd ON c.cbNo = cbd.cbNo " +
+            "WHERE c.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND c.workType = '扣款'"
+    )
+    long grossBalances(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** MASTER Recovery of Fraud Losses - Accounts */
+    @Query("SELECT COUNT(DISTINCT f.cardNo) " +
+            "FROM CB c " +
+            "JOIN CBDetail cbd ON c.cbNo = cbd.cbNo " +
+            "WHERE cbd.cbResult = TRUE " +
+            "AND c.createTime BETWEEN :startDate AND :endDate " +
+            "AND c.cardBin IN :cardBins " +
+            "AND c.workType = '扣款'"
+    )
+    long recoveryAccounts(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
+
+    /** MASTER Recovery of Fraud Losses - Balances */
+    @Query("SELECT COALESCE(SUM(COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)), 0) " +
+            "FROM CB c " +
+            "JOIN CBDetail cbd ON c.cbNo = cbd.cbNo " +
+            "WHERE cbd.createTime BETWEEN :startDate AND :endDate " +
+            "AND (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0) >= 0) " +
+            "AND c.cardBin IN :cardBins " +
+            "AND c.workType = '扣款'"
+    )
+    long recoveryBalances(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
