@@ -275,3 +275,65 @@
             @Param("endDate") LocalDateTime endDate,
             @Param("cardBins") List<String> cardBins
     );
+
+------------------------
+// 在您的 Repository 介面中
+
+/**
+ * 合併查詢 VISA 交易相關統計 (V01-04, V07-14)
+ * 使用條件聚合 (Conditional Aggregation) 將 12 次查詢合併為 1 次
+ */
+@Query("SELECT new com.scsb.cfms.dto.VisaTransactionStatsDto(" +
+        // --- Amount (回收金額: refundAmt + cbReturnAmount) ---
+        // V01: 國內 + 現金
+        "SUM(CASE WHEN t.countryCode = 'TW' AND t.mccCode IN ('6011', '6010') " +
+        "         THEN (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)) ELSE 0L END), " +
+        // V02: 國內 + 支付
+        "SUM(CASE WHEN t.countryCode = 'TW' AND t.mccCode NOT IN ('6011', '6010') " +
+        "         THEN (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)) ELSE 0L END), " +
+        // V03: 國外 + 現金
+        "SUM(CASE WHEN (t.countryCode <> 'TW' OR t.countryCode IS NULL) AND t.mccCode IN ('6011', '6010') " +
+        "         THEN (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)) ELSE 0L END), " +
+        // V04: 國外 + 支付
+        "SUM(CASE WHEN (t.countryCode <> 'TW' OR t.countryCode IS NULL) AND t.mccCode NOT IN ('6011', '6010') " +
+        "         THEN (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)) ELSE 0L END), " +
+
+        // --- Count (筆數: fraudTranNo) ---
+        // V07: 國內 + 現金
+        "COUNT(CASE WHEN t.countryCode = 'TW' AND t.mccCode IN ('6011', '6010') THEN 1 ELSE NULL END), " +
+        // V08: Volume (交易金額: tranAmt) - 國內 + 現金
+        "SUM(CASE WHEN t.countryCode = 'TW' AND t.mccCode IN ('6011', '6010') THEN COALESCE(t.tranAmt, 0) ELSE 0L END), " +
+        
+        // V09: 國內 + 支付 + Count
+        "COUNT(CASE WHEN t.countryCode = 'TW' AND t.mccCode NOT IN ('6011', '6010') THEN 1 ELSE NULL END), " +
+        // V10: 國內 + 支付 + Volume
+        "SUM(CASE WHEN t.countryCode = 'TW' AND t.mccCode NOT IN ('6011', '6010') THEN COALESCE(t.tranAmt, 0) ELSE 0L END), " +
+        
+        // V11: 國外 + 現金 + Count
+        "COUNT(CASE WHEN (t.countryCode <> 'TW' OR t.countryCode IS NULL) AND t.mccCode IN ('6011', '6010') THEN 1 ELSE NULL END), " +
+        // V12: 國外 + 現金 + Volume
+        "SUM(CASE WHEN (t.countryCode <> 'TW' OR t.countryCode IS NULL) AND t.mccCode IN ('6011', '6010') THEN COALESCE(t.tranAmt, 0) ELSE 0L END), " +
+        
+        // V13: 國外 + 支付 + Count
+        "COUNT(CASE WHEN (t.countryCode <> 'TW' OR t.countryCode IS NULL) AND t.mccCode NOT IN ('6011', '6010') THEN 1 ELSE NULL END), " +
+        // V14: 國外 + 支付 + Volume
+        "SUM(CASE WHEN (t.countryCode <> 'TW' OR t.countryCode IS NULL) AND t.mccCode NOT IN ('6011', '6010') THEN COALESCE(t.tranAmt, 0) ELSE 0L END) " +
+
+        ") " +
+        "FROM CaseTran t " +
+        "JOIN CBDetail cbd ON t.fraudTranNo = cbd.fraudTranNo " +
+        // 假設需要 JOIN CB 才能拿到 cardBin，請依實際情況調整
+        "JOIN CB c ON cbd.cbNo = c.cbNo " + 
+        "WHERE cbd.createTime BETWEEN :startDate AND :endDate " +
+        "AND c.cardBin IN :cardBins " +
+        "AND cbd.workType = '扣款' " +
+        // 根據原始查詢，Amount類統計有此條件，但Count/Volume類沒有。
+        // 如果要合併，需確認此條件是否適用於全體。若僅適用於Amount，則需移至Amount的CASE WHEN中。
+        // 這裡暫時假設為全域條件，如原始 V01-04 所示。
+        "AND (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0) >= 0)"
+)
+VisaTransactionStatsDto getVisaTransactionStats(
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate,
+        @Param("cardBins") List<String> cardBins
+);
