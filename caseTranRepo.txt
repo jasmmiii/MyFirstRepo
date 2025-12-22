@@ -337,3 +337,40 @@ VisaTransactionStatsDto getVisaTransactionStats(
         @Param("endDate") LocalDateTime endDate,
         @Param("cardBins") List<String> cardBins
 );
+
+
+------------------------------------------------------
+/**
+     * 合併查詢 Master 相關統計 (Gross Balances, Recovery Accounts, Recovery Balances)
+     */
+    @Query("SELECT new com.scsb.cfms.dto.MasterStatsDto(" +
+            
+            // 1. Gross Balances (條件: c.createTime)
+            "SUM(CASE WHEN c.createTime BETWEEN :startDate AND :endDate " +
+            "         THEN COALESCE(cbd.tranAmt, 0) ELSE 0L END), " +
+
+            // 2. Recovery Accounts (條件: c.createTime + cbResult=TRUE + Distinct CardNo)
+            "COUNT(DISTINCT CASE WHEN c.createTime BETWEEN :startDate AND :endDate " +
+            "                    AND cbd.cbResult = TRUE " +
+            "                    THEN c.cardNo ELSE NULL END), " +
+
+            // 3. Recovery Balances (條件: cbd.createTime + 金額>0) -> 注意這裡是 cbd 的時間
+            "SUM(CASE WHEN cbd.createTime BETWEEN :startDate AND :endDate " +
+            "         AND (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0) >= 0) " +
+            "         THEN (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)) ELSE 0L END) " +
+
+            ") " +
+            "FROM CB c " +
+            "JOIN CBDetail cbd ON c.cbNo = cbd.cbNo " +
+            "JOIN CaseTran t ON c.caseNo = t.caseNo " + // 依照您的需求 Join CaseTran
+            "WHERE t.cardBin IN :cardBins " +
+            "AND c.workType = '扣款' " +
+            // 【重要】因為要同時查 c.createTime 和 cbd.createTime，這裡必須放寬範圍
+            // 只要滿足其中一個時間條件的資料都要抓進來，然後在 SELECT 裡細分
+            "AND (c.createTime BETWEEN :startDate AND :endDate OR cbd.createTime BETWEEN :startDate AND :endDate)"
+    )
+    MasterStatsDto getMasterStats(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
