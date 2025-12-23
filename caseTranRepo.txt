@@ -374,3 +374,31 @@ VisaTransactionStatsDto getVisaTransactionStats(
             @Param("endDate") LocalDateTime endDate,
             @Param("cardBins") List<String> cardBins
     );
+
+
+@Query("SELECT new com.scsb.cfms.dto.MasterDto(" +
+
+            // 1. Gross Balances
+            "COALESCE(SUM(cbd.tranAmt), 0) ELSE 0L END), " +
+
+            // 2. Recovery Accounts
+            "COUNT(DISTINCT CASE WHEN cbd.cbResult = TRUE " +
+            "                    THEN c.cardNo ELSE NULL END), " +
+
+            // 3. Recovery Balances
+            "COALESCE(SUM((CASE WHEN (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0) >= 0) " +
+            "         THEN (COALESCE(cbd.refundAmt, 0) + COALESCE(cbd.cbReturnAmount, 0)) ELSE 0L END), 0), " +
+
+            ") " +
+            "FROM CB c " +
+            "JOIN CBDetail cbd ON c.cbNo = cbd.cbNo " +
+            "JOIN CaseTran t ON c.caseNo = t.caseNo " +
+            "WHERE c.createTime BETWEEN :startDate AND :endDate " +
+            "WHERE t.cardBin IN :cardBins " +
+            "AND c.workType = '扣款' "
+    )
+    MasterDto getMasterStats(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            @Param("cardBins") List<String> cardBins
+    );
