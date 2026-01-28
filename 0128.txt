@@ -1,0 +1,7 @@
+Non-resolvable parent POM for com.scsb:cfms:1.0.0: 
+The following artifacts could not be resolved: 
+org.springframework.boot:spring-boot-starter-parent:pom:3.5.8 (absent): 
+org.springframework.boot:spring-boot-starter-parent:pom:3.5.8 failed to transfer from https://ddpsn01.cbsd.scsb.com.tw/repository/maven-public/ during a previous attempt. 
+This failure was cached in the local repository and resolution is not reattempted until the update interval of nexus has elapsed or updates are forced. 
+Original error: Could not transfer artifact org.springframework.boot:spring-boot-starter-parent:pom:3.5.8 from/to nexus (https://ddpsn01.cbsd.scsb.com.tw/repository/maven-public/): 
+PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target and 'parent.relativePath' points at no local POM
