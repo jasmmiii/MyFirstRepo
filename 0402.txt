@@ -1,0 +1,242 @@
+$(document).ready(function(){
+    const userId = user.userId;
+    let currentBillingDay = null;
+    // 建立 Loading 元素
+    const loadingElement = document.createElement("strong");
+    loadingElement.textContent = "Loading";
+    const loadingHtml = loadingElement.outerHTML;
+
+    new Tabulator("#unassigned-case-table", {
+        ajaxURL: contextPath + "api/card/unassigned",
+        ajaxLoader: true,
+        ajaxLoaderLoading: loadingHtml,
+        ajaxResponse: function (url, params, response) {
+            return response.data || [];
+        },
+        placeholder: "目前尚無資料",
+        layout: "fitColumns",
+        pagination:"local",
+        paginationSize:30,
+        paginationSizeSelector:[10, 20, 30, 50],
+        movableColumns:true,
+        paginationCounter:"rows",
+        columns: [
+            {
+                title: "補卡單編號",
+                field: "reissueNo",
+                headerSort: true,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 4,
+                formatter: function (cell) {
+                    const rowData = cell.getRow().getData();
+                    const reissueNo = rowData.reissueNo;
+                    return `<button class="btn btn-link" data-bs-toggle="modal" data-bs-target="#reissueModal" data-reissue-no="${reissueNo}">${reissueNo}</button>`;
+                }
+            },
+            {
+                title: "優先程度",
+                field: "isCardUrgent",
+                headerSort: true,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 2,
+                formatter: function(cell) {
+                    const value = cell.getValue();
+                    const element = cell.getElement();
+                    let text = "一般";
+
+                    if (value === "Y") {
+                        text = "急件";
+                        element.style.color = "red";
+                    }
+
+                    return text;
+                }
+            },
+            {
+                title: "客戶姓名",
+                field: "customerName",
+                headerSort: false,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 2
+            },
+            {
+                title: "客戶ID",
+                field: "customerId",
+                sorter: "number",
+                headerSort: false,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 3
+            },
+            {
+                title: "掛失卡號",
+                field: "cardNo",
+                headerSort: false,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 3
+            },
+            {
+                title: "結帳日",
+                field: "billingDay",
+                headerSort: true,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 2
+            },
+            {
+                title: "是否補卡",
+                field: "isReissueCard",
+                headerSort: true,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 2,
+                formatter: "lookup",
+                formatterParams: {
+                    "Y": "是",
+                    "N": "否"
+                }
+            },
+            {
+                title: "補卡特別註記",
+                field: "reissueCardNote",
+                headerSort: false,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 3
+            },
+            {
+                title: "建檔單位",
+                field: "createUnit",
+                headerSort: false,
+                headerHozAlign: "center",
+                hozAlign: "center",
+                widthGrow: 2
+            }
+        ],
+    });
+
+    // 點補卡單編號
+    const reissueModal = $("#reissueModal");
+    reissueModal.on("shown.bs.modal", function (event) {
+        hideMessage();
+        const button = $(event.relatedTarget);
+        const reissueNo = button.data("reissueNo");
+
+        if(reissueNo){
+            fetchUnAssignedReissueCardData(reissueNo);
+        }
+        const today = new Date();
+        const billingDayString = $('#billingDay').text().trim();
+//        const billingDayString = currentBillingDay;
+        const billingDayNum = parseInt(billingDayString, 10);
+        const canReissue = checkBillingDay(today, billingDayNum);
+
+        console.log("today date", today.getDate());
+        console.log("結帳日:", billingDayNum, "原始字串:", billingDayString);
+        console.log("能否取件:", canReissue);
+
+
+    });
+
+    // 按下取件鈕
+    $('#reissue-pick-up').on('click', function(e) {
+        e.preventDefault();
+
+        hideMessage();
+        const reissueNo = $('#reissueNo').text();
+        const today = new Date();
+        const billingDayString = $('#billingDay').text().trim();
+//        const billingDayString = currentBillingDay;
+        const billingDayNum = parseInt(billingDayString, 10);
+        const canReissue = checkBillingDay(today, billingDayNum);
+
+        console.log("today date", today.getDate());
+        console.log("結帳日:", billingDayNum, "原始字串:", billingDayString);
+        console.log("能否取件:", canReissue);
+        if(canReissue === false){
+            showErrorMessage("今天或即將到來的假日是本月結帳日，無法取件此補卡單，請擇日進行。");
+            return;
+        }
+
+
+        callApi({
+            url: contextPath + "api/card/unassigned/" + reissueNo + "/collect",
+            method: "POST",
+            data: { reissueNo: reissueNo },
+            success: function(response) {
+                if (response.success) {
+                    showInfoMessage("取件成功！");
+
+                    reissueModal.modal('hide');
+                    location.reload();
+
+                } else {
+                    showErrorMessage(response.message || "取件失敗。");
+                }
+            },
+            error: function(xhr) {
+                showErrorMessage("取件請求失敗:", xhr);
+            }
+        });
+    });
+
+});
+
+
+function fetchUnAssignedReissueCardData(reissueNo, currentBillingDay) {
+    $('#createUnit').text('');
+    $('#reissueNo').text('');
+    $('#customerId').text('');
+    $('#customerName').text('');
+    $('#cardNo').text('');
+    $('#billingDay').text('');
+    $('#reissueCardNote').text('');
+
+    callApi({
+        url: contextPath + "api/card/unassigned/" + reissueNo,
+        method: "GET",
+        success: function(response) {
+//            console.log("單筆資料回傳:", response);
+
+            if (response.success && response.data) {
+                const modalData = response.data;
+
+                $('#createUnit').text(modalData.createUnit);
+                $('#reissueNo').text(modalData.reissueNo);
+                $('#customerId').text(maskLastFourDigits(modalData.customerId));
+                $('#customerName').text(maskName(modalData.customerName));
+                $('#cardNo').text(maskCardNo(modalData.cardNo));
+                $('#billingDay').text(modalData.billingDay);
+                $('#reissueCardNote').text(modalData.reissueCardNote);
+
+//                currentBillingDay = modalData.billingDay;
+            }
+        },
+        error: function(xhr) {
+            showErrorMessage("獲取單筆資料失敗:", xhr);
+        }
+    });
+
+//    return currentBillingDay;
+}
+
+// 結帳日檢核
+//let currentBillingDay = null;
+function checkBillingDay(dateObj, billingDay){
+    const dateOfToday = dateObj.getDate();
+    const dayOfWeek = dateObj.getDay();
+
+    if(dayOfWeek === 5){
+        const tmrDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateOfToday + 1).getDate();
+        const dayAfterDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateOfToday + 2).getDate();
+
+        if (tmrDate === billingDay || dayAfterDate === billingDay){ return false; }
+    }
+    return true;
+}
+
+
