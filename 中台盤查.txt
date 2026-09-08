@@ -1,0 +1,105 @@
+39 現金外幣兌換
+// 查詢已收匯差現鈔數，中台DB僅記錄到前日總計
+// 取得本日加項金額
+// 如果>0 才抓取 本日減項金額
+
+
+84 ntq1
+NTQ1 - 依據帳號查詢該客戶今日尚未使用的議價明細
+<pre>
+  1. 依據帳號結構 mapping 至分行代碼
+  2. 透過{@link #readSeqList(BaseFdcArg)}，查詢出今日尚未使用的議價明細
+</pre>
+@param arg BaseFdcArg
+@return 客戶當日未使用的優惠序號明細
+
+
+85 nt31
+
+NT31 依據優惠序號，去查詢空白/已使用，且承作日為查詢當日七天內之優惠序號資料
+<pre>
+1. 檢查該序號是否存在
+2. 檢查狀態是否為過期或是刪除
+3. 檢查查詢出來的議價是否在7天內的record
+4. 依據客戶統編，呼叫{@link #getCustomerDetailsByCustomerNo(String)}，取得客戶資訊
+5. 呼叫{@link #processCustomerInfo(SCSBCustomerResponseBody)}，取得客戶名稱
+6. 依據優惠序號先去核心查詢，確認此優惠序號是否已經被用於開立外幣定存，若有，則將核心資料更新至中台
+7. 依據entity來更新response
+</pre>
+@param arg 查詢物件
+@return FdcReadRs
+
+NT31 新增
+     * <pre>
+     *     1. 檢查存期的pattern是否正確
+     *     2. 呼叫{@link #validateEventCodesAndGetCustName(BaseFdcArg)}，判斷是否有事故以及取得客戶名稱
+     *     3. 呼叫{@link #getFdcSeq(BaseFdcArg)}，取得優惠序號
+     *     4. 確認該序號是否存在，若無，則新增至DB，並且狀態設為未使用
+     * </pre>
+     * @param arg CreateArg
+     * @return FdcReadRs
+
+NT31 維護
+     * <pre>
+     *     1. 檢查存期的pattern是否正確
+     *     2. 呼叫{@link #getUnusedOrUsedRecord(BaseFdcArg)}，執行修改與刪除的共用檢核
+     *     3. 依據客戶統編，呼叫{@link #getCustomerEventCodesByCustomerNo(String)}，判斷是否有事故
+     *     4. 呼叫{@link #processCustomerInfo(SCSBCustomerResponseBody)}，取得客戶名稱
+     * </pre>
+     * @param arg UpdateArg
+     * @return FdcReadRs
+
+NT31 刪除
+     * <pre>
+     *     1. 呼叫{@link #getUnusedOrUsedRecord(BaseFdcArg)}，取得未使用的優惠序號
+     *     2. 透過{@link #getAndUpdateNegDetails(BaseFdcArg, DepFdcSeqParmEntity)}，從核心去判斷該優惠序號是否開立
+     *     3. 若該優惠序號已開立，則拋錯；反之，則刪除
+     * </pre>
+     * @param arg 優惠序號
+     * @return FdcReadRs
+
+
+86 nt32
+// 確保查詢到該分行的議價資訊
+NT32 依據客戶統編與日期區間，查詢該情境所有的優惠序號明細
+@param arg 查詢物件
+@return 優惠序號明細
+
+
+87 accountInfo
+定存議價維護-查詢帳號資料
+檢核內容：
+      1. 這個定存帳號存不存在
+      2. DBU帳號是不是原開戶行輸入的、OBU是不是歸屬行或國際金融業務分行輸入
+      3. 客戶狀態是否有3018
+      4. 定存帳號pattern是否為外匯定期存款 or 外幣綜合存款定存
+      5. 帳號狀態是否為結清、轉期次數是否 > 0
+@param actNo 帳號
+@return FdrNegReadAccountRs
+
+
+88 create
+定存議價維護-新增定存議價
+依據上送後的每一筆record會去執行以下動作
+      1. 呼叫validateForMaintainPendingRecord(NegotiatedArg, List, int)
+      2. 若議價資料不存在，產品為定存專案或是結構型商品，議價狀態直接變為已核可；反之，則是未核可
+      3. 若議價資料存在，則拋錯
+上述動作假如有任何error，則會加入到errorList，並且進到下一個迭代，記錄每一筆的錯誤。 跑完for迴圈，會判斷errorList有無錯誤，有問題則拋錯；反之，則新增
+@param argList 新增物件
+@return EmptyRs
+
+
+89 pendingRec
+查詢未核可的議價資訊
+該method用於兩個情境：
+1. 定存議價維護功能之前，查詢"該分行"未核可的議價資訊
+2. 定存議價維護核可功能之前，當輸入01或是02，則是查詢DBU或是OBU所有未核可的議價資訊
+@param branchCode 查詢分行
+@return 議價明細
+
+
+
+
+
+
+
