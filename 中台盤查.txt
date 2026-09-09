@@ -98,6 +98,50 @@ NT32 依據客戶統編與日期區間，查詢該情境所有的優惠序號明
 @return 議價明細
 
 
+93
+定存議價查詢
+1. 呼叫validateBranchCode(String)，檢查查詢分行是否存在
+2. 呼叫read(ReadArg)，依據條件來查詢所有議價狀態的record
+Params:
+branchCode – 查詢分行 currency – 查詢幣別 startDate – 查詢起日 endDate – 查詢迄日
+Returns: 議價明細
+
+
+94
+1. 呼叫validateBranchCode(String)，檢查查詢分行是否存在
+2. 呼叫read(ReadArg)，依據條件來查詢已核可的議價資訊
+@param branchCode 查詢分行
+@param startDate 查詢起日
+@param endDate 查詢迄日
+@return 議價明細
+
+
+95
+已核可定存議價資料修改-查詢已核可的議價資料
+1. 透過帳號，呼叫read(ReadArg)，查詢議價資訊，判斷是否存在
+2. 判斷該議價資訊是否已核可
+3. 判斷議價分行與查詢分行相同
+@param branchCode 查詢分行
+@param accountNo 查詢帳號
+@return 議價資訊
+
+96
+已核可定存議價資料修改-更新已核可的議價資料
+1. 透過帳號，查詢議價資訊，判斷是否存在以及是否已核可
+2. 呼叫validateCommonCondition(NegotiatedArg, List, int)，檢查維護時所需的共同條件
+3. 呼叫isProjectTypeAndValidateParmAndRate(NegotiatedArg, List, Integer)，判斷是否需要假查參數黨
+4. 更新議價資訊
+@param arg 議價資訊
+@return EmptyRs
+
+97
+已核可定存議價資料修改-刪除已核可的議價資料
+1. 透過帳號，查詢議價資訊，判斷是否存在以及是否已核可
+2. 刪除議價資訊
+@param arg 議價資訊
+@return EmptyRs
+
+
 
 
 
